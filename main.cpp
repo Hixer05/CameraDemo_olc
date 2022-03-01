@@ -35,14 +35,14 @@ using namespace std;
 struct sCamera{
     olc::vf2d cameraLen;
     olc::vf2d cameraPos;
-    olc::vf2d scaling;
+    double scaling;
     olc::vf2d worldToCam(olc::vf2d world_pos){
         //(x-cam.x)k, -(y, cam.y)k
-        return {(world_pos.x - cameraPos.x)*scaling.x, (-(world_pos.y - cameraPos.y))*scaling.y};
+        return {(world_pos.x - cameraPos.x)*scaling, (-(world_pos.y - cameraPos.y))*scaling};
     };
     olc::vf2d camToWorld(olc::vi2d position){
         //olc::vf2d translate_vec = -cameraPos; 
-        return {(position.x/scaling.x)+cameraPos.x,-(position.y/scaling.y)+cameraPos.y};
+        return {(position.x/scaling)+cameraPos.x,-(position.y/scaling)+cameraPos.y};
     }
     bool isViewing(olc::vf2d obj_pos){
         return ((obj_pos.x > cameraPos.x && obj_pos.x < cameraPos.x+cameraLen.x)
@@ -64,7 +64,10 @@ struct sBody{
 
 float distance(olc::vf2d pos1, olc::vf2d pos2){
         return sqrt(pow(pos1.x-pos2.x,2)+pow(pos1.y-pos2.y,2));
-    }
+}
+float v_module(olc::vf2d vec){
+    return sqrt(pow(vec.x, 2)+pow(vec.y, 2));
+}
 
 class Example : public olc::PixelGameEngine
 {
@@ -75,8 +78,9 @@ public:
 	}
 
 private:
-
 vector<olc::vf2d> toDraw;
+const double bcam_speed = 400;
+double cam_speed = bcam_speed;
 sCamera cam1;
 const int gridSpacing = 50;
 
@@ -98,7 +102,7 @@ public:
 	{
         cam1.cameraLen = {ScreenWidth(), ScreenHeight()};
         cam1.cameraPos= {-cam1.cameraLen.x/2, cam1.cameraLen.y/2};
-        cam1.scaling = {1,1};
+        cam1.scaling = 1;
         //toDraw.push_back({100,500});
         //toDraw.push_back({ScreenWidth()/2,ScreenHeight()/2});
 
@@ -144,7 +148,7 @@ public:
             
 
             if(imode_release){
-                    FillCircle(cam1.worldToCam(tmp_pos), imode_mass_lvl/10);
+                    FillCircle(cam1.worldToCam(tmp_pos), (imode_mass_lvl/10)*cam1.scaling);
                     DrawLine(cam1.worldToCam(tmp_pos), GetMousePos());
                     if(GetMouse(0).bReleased){  
                         elements["pianeta"+to_string(tick)]=sBody{imode_mass_lvl/100, imode_mass_lvl/10, tmp_pos ,(tmp_pos-cam1.camToWorld(GetMousePos()))*imode_bias_multiply_velocity};
@@ -155,11 +159,15 @@ public:
 
         }
 
+        
+
         //__CAMERA_MOV__
-        if(GetKey(olc::Key::A).bHeld) cam1.cameraPos.x -= 400 * fElapsedTime;
-        if(GetKey(olc::Key::D).bHeld) cam1.cameraPos.x += 400 * fElapsedTime;
-        if(GetKey(olc::Key::W).bHeld) cam1.cameraPos.y += 400 * fElapsedTime;
-        if(GetKey(olc::Key::S).bHeld) cam1.cameraPos.y -= 400 * fElapsedTime;
+
+        cam_speed = (1/cam1.scaling) * bcam_speed;
+        if(GetKey(olc::Key::A).bHeld) cam1.cameraPos.x -= cam_speed * fElapsedTime;
+        if(GetKey(olc::Key::D).bHeld) cam1.cameraPos.x += cam_speed * fElapsedTime;
+        if(GetKey(olc::Key::W).bHeld) cam1.cameraPos.y += cam_speed* fElapsedTime;
+        if(GetKey(olc::Key::S).bHeld) cam1.cameraPos.y -= cam_speed* fElapsedTime;
 
         if(GetKey(olc::Key::Q).bHeld) cam1.scaling *= 1.005;
         if(GetKey(olc::Key::E).bHeld) cam1.scaling *= 0.995;
@@ -186,8 +194,7 @@ public:
 
         //__DRAW BODIES__  
         for(auto& [key, o] : elements){
-            DrawCircle(cam1.worldToCam(o.position), o.radius*cam1.scaling.x);
-            //cout << key << " "<< o.position << o.velocity << endl;
+            DrawCircle(cam1.worldToCam(o.position), o.radius*cam1.scaling);
         }
 
         
@@ -206,11 +213,14 @@ public:
         }
 
         //__DRAW_OBJS
+        /*
         for(int i = 0; i< toDraw.size(); i++){
             if(cam1.isViewing(toDraw.at(i))){
                 FillCircle(cam1.worldToCam(toDraw.at(i)), 50);
             }    
         }
+        */
+
         DrawString({0,ScreenHeight()-10}, "Realised by using Javidx9 pixelGameEngine");
         DrawString({0,ScreenHeight()-20}, to_string(GetMousePos().x)+" "+to_string(GetMousePos().y));
 		DrawString({0,ScreenHeight()-30}, to_string(cam1.camToWorld(GetMousePos()).x)+" "+to_string(cam1.camToWorld(GetMousePos()).y));
