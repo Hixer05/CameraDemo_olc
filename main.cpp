@@ -35,13 +35,14 @@ using namespace std;
 struct sCamera{
     olc::vf2d cameraLen;
     olc::vf2d cameraPos;
-    olc::vi2d worldToCam(olc::vf2d world_pos){
-        //toDraw.at(i)-(cameraPos)
-        return {world_pos.x - cameraPos.x, -(world_pos.y - cameraPos.y)};
+    olc::vf2d scaling;
+    olc::vf2d worldToCam(olc::vf2d world_pos){
+        //(x-cam.x)k, -(y, cam.y)k
+        return {(world_pos.x - cameraPos.x)*scaling.x, (-(world_pos.y - cameraPos.y))*scaling.y};
     };
     olc::vf2d camToWorld(olc::vi2d position){
         //olc::vf2d translate_vec = -cameraPos; 
-        return {position.x+cameraPos.x,(-position.y+cameraPos.y)};
+        return {(position.x/scaling.x)+cameraPos.x,-(position.y/scaling.y)+cameraPos.y};
     }
     bool isViewing(olc::vf2d obj_pos){
         return ((obj_pos.x > cameraPos.x && obj_pos.x < cameraPos.x+cameraLen.x)
@@ -84,7 +85,7 @@ map<string, sBody>elements;
 size_t tick = 0;
 const float G = 6.674 * pow(10, -11);
 float time_multiplier = 1;
-float gravity_multiplier = 1000;
+float gravity_multiplier = 10000;
 //imode
 bool imode = false;
 bool imode_release = false;;
@@ -97,7 +98,7 @@ public:
 	{
         cam1.cameraLen = {ScreenWidth(), ScreenHeight()};
         cam1.cameraPos= {-cam1.cameraLen.x/2, cam1.cameraLen.y/2};
-
+        cam1.scaling = {1,1};
         //toDraw.push_back({100,500});
         //toDraw.push_back({ScreenWidth()/2,ScreenHeight()/2});
 
@@ -110,6 +111,7 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+        //cout << cam1.cameraPos << endl;
         tick++;
         float physics_time = fElapsedTime * time_multiplier;
 
@@ -142,9 +144,9 @@ public:
             
 
             if(imode_release){
+                    FillCircle(cam1.worldToCam(tmp_pos), imode_mass_lvl/10);
                     DrawLine(cam1.worldToCam(tmp_pos), GetMousePos());
-                    DrawCircle(tmp_pos, imode_mass_lvl/10);
-                    if(GetMouse(0).bReleased){  //sBody{tmp_pos, (tmp_pos-GetMousePos())*imode_bias_multiply_velocity, imode_mass_lvl}
+                    if(GetMouse(0).bReleased){  
                         elements["pianeta"+to_string(tick)]=sBody{imode_mass_lvl/100, imode_mass_lvl/10, tmp_pos ,(tmp_pos-cam1.camToWorld(GetMousePos()))*imode_bias_multiply_velocity};
                         imode_release=false;
                     }
@@ -159,7 +161,9 @@ public:
         if(GetKey(olc::Key::W).bHeld) cam1.cameraPos.y += 400 * fElapsedTime;
         if(GetKey(olc::Key::S).bHeld) cam1.cameraPos.y -= 400 * fElapsedTime;
 
-
+        if(GetKey(olc::Key::Q).bHeld) cam1.scaling *= 1.005;
+        if(GetKey(olc::Key::E).bHeld) cam1.scaling *= 0.995;
+         
         //__CALC FORCES BETWEEN BODIES__
 
         map<string, olc::vf2d> forces2apply; // <key, resulting forces>
@@ -179,24 +183,26 @@ public:
             elements[key].applyImpulse(f, physics_time);
         };
 
+
         //__DRAW BODIES__  
         for(auto& [key, o] : elements){
-            DrawCircle(cam1.worldToCam(o.position), o.radius);
-            cout << key << " "<< o.position << o.velocity << endl;
+            DrawCircle(cam1.worldToCam(o.position), o.radius*cam1.scaling.x);
+            //cout << key << " "<< o.position << o.velocity << endl;
         }
 
-
+        
         //__DRAW_GRID__
         // horizontal:
         int scarto = (int)(cam1.cameraPos.y) % gridSpacing; // eg pos.x=1988; scarto=38
-        //      i = lower pos                      // i <  up pos                        
-        for(int i = cam1.cameraPos.y - cam1.cameraLen.y - scarto; i<cam1.cameraPos.y; i+=gridSpacing){
-                DrawLine(cam1.worldToCam({cam1.cameraPos.x,i}),cam1.worldToCam({cam1.cameraPos.x+cam1.cameraLen.x,i}), olc::GREY);
+        for(int i = cam1.camToWorld({0,0}).y-scarto; i>cam1.camToWorld(cam1.cameraLen).y; i-=gridSpacing){
+                DrawLine({0,cam1.worldToCam({0,i}).y},{cam1.cameraLen.x,cam1.worldToCam({0,i}).y}, olc::GREY);
+                
         }
         //vertical:
+        
         scarto = (int)(cam1.cameraPos.x) % gridSpacing;
-        for(int i = cam1.cameraPos.x- scarto; i<cam1.cameraPos.x + cam1.cameraLen.x; i+=gridSpacing){
-                DrawLine(cam1.worldToCam({i, cam1.cameraPos.y-cam1.cameraLen.y}),cam1.worldToCam({i,cam1.cameraPos.y}), olc::GREY);
+        for(int i = cam1.camToWorld({0,0}).x-scarto; i<cam1.camToWorld(cam1.cameraLen).x; i+=gridSpacing){
+                DrawLine({cam1.worldToCam({i,0}).x, 0},{cam1.worldToCam({i,0}).x,cam1.cameraLen.y}, olc::GREY);
         }
 
         //__DRAW_OBJS
@@ -205,14 +211,10 @@ public:
                 FillCircle(cam1.worldToCam(toDraw.at(i)), 50);
             }    
         }
-        /*
-        DrawString({0,ScreenHeight()-10}, to_string(cam1.cameraPos.x)+" "+to_string(cam1.cameraPos.y));
-        DrawString({0,ScreenHeight()-20}, to_string(cam1.camToWorld(GetMousePos()).x)+" "+to_string(cam1.camToWorld(GetMousePos()).y));
-        DrawString({0,ScreenHeight()-30}, to_string(GetMousePos().x)+" "+to_string(GetMousePos().y));
-        DrawString({0,ScreenHeight()-40}, to_string(cam1.worldToCam({0,0}).x)+" "+to_string(cam1.worldToCam({0,0}).y));
-        */
         DrawString({0,ScreenHeight()-10}, "Realised by using Javidx9 pixelGameEngine");
-		return true;
+        DrawString({0,ScreenHeight()-20}, to_string(GetMousePos().x)+" "+to_string(GetMousePos().y));
+		DrawString({0,ScreenHeight()-30}, to_string(cam1.camToWorld(GetMousePos()).x)+" "+to_string(cam1.camToWorld(GetMousePos()).y));
+        return true;
 	}
 };
 
