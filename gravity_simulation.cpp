@@ -55,18 +55,17 @@ struct sBody{
     size_t radius;
     olc::vf2d position; 
     olc::vf2d velocity;
+    string name = "Unnamed";
+    olc::Pixel color = olc::WHITE;
     void applyImpulse(olc::vf2d force, float time){
+        
         velocity += (force/mass)*time;
         position += velocity*time;
     }
-    
 };
 
 float distance(olc::vf2d pos1, olc::vf2d pos2){
         return sqrt(pow(pos1.x-pos2.x,2)+pow(pos1.y-pos2.y,2));
-}
-float v_module(olc::vf2d vec){
-    return sqrt(pow(vec.x, 2)+pow(vec.y, 2));
 }
 
 class Example : public olc::PixelGameEngine
@@ -85,11 +84,11 @@ sCamera cam1;
 const int gridSpacing = 50;
 
 // CELESTIAL BODIES
-map<string, sBody>elements;
+map<size_t, sBody>elements;
 size_t tick = 0;
 const float G = 6.674 * pow(10, -11);
 float time_multiplier = 2;
-float gravity_multiplier = 10000;
+float gravity_multiplier = 1000000;
 //imode
 bool imode = false;
 bool imode_release = false;;
@@ -104,67 +103,44 @@ public:
         cam1.cameraPos= {-cam1.cameraLen.x/2, cam1.cameraLen.y/2};
         cam1.scaling = 1;
 
-        elements["Pianeta1"] = sBody{10000000000, 30, olc::vf2d{0,0}};
-        elements["follow"] = sBody{10000, 20, olc::vf2d{-400,0}, olc::vf2d{0,60}};
+        elements[0] = sBody{20000000, 30, olc::vf2d{0,0}};
+        elements[1] = sBody{8600, 20, olc::vf2d{-200,0}, olc::vf2d{0,20}};
 		return true;
 	}
 
 public:
-
+    
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-
-        cam1.cameraPos +=  elements["follow"].position - cam1.camToWorld({ScreenWidth()/2, ScreenHeight()/2});
+        //cam1.cameraPos +=  elements[1].position - cam1.camToWorld({ScreenWidth()/2, ScreenHeight()/2});
         tick++;
-        float physics_time = fElapsedTime * time_multiplier;
 
         if(GetKey(olc::Key::C).bPressed){
             elements.clear();
         }
+        if(GetKey(olc::MINUS).bPressed){
+            if(time_multiplier>1){
+                time_multiplier -=1;
+            }
+        }
+        if(GetKey(olc::EQUALS).bPressed){
+            time_multiplier +=1;
+        }
 
+        float physics_time = fElapsedTime * time_multiplier;
 
         //clear
 		Clear(olc::BACK);
 
         DrawString(GetMousePos() + olc::vi2d{50, 0}, to_string(cam1.camToWorld(GetMousePos()).x) + " " + to_string(cam1.camToWorld(GetMousePos()).y));
 
-        //__INSERT_MODE__
+
         
-        {
-            
-            if(GetKey(olc::I).bPressed){
-                imode = !imode;
-            }
-            if(imode){
-                DrawString(olc::vi2d{0,0} , "Mass Level: "+ std::to_string(imode_mass_lvl) +"\nPress O and P to adjust", olc::WHITE, 2);
-                DrawString(olc::vi2d{0,35}, "Press C to cancel the scene", olc::WHITE, 2);
-                if(GetMouse(0).bPressed){
-                    imode_release = true;
-                    tmp_pos = GetMousePos();
-                }else if(GetKey(olc::P).bPressed) imode_mass_lvl +=100;
-                else if (GetKey(olc::O).bPressed && imode_mass_lvl>100) imode_mass_lvl -=100;
-            }else{
-                DrawString(olc::vi2d{0,0}, "Press C to cancel the scene", olc::WHITE, 2);
-            }
-            
-            
-
-            if(imode_release){
-                    FillCircle(tmp_pos, (imode_mass_lvl/70)*cam1.scaling);
-                    DrawLine(tmp_pos, GetMousePos());
-                    if(GetMouse(0).bReleased){  
-                        elements["pianeta"+to_string(tick)]=sBody{imode_mass_lvl, imode_mass_lvl/70, cam1.camToWorld(tmp_pos) ,(cam1.camToWorld(tmp_pos)-cam1.camToWorld(GetMousePos()))*imode_bias_multiply_velocity};
-                        imode_release=false;
-                    }
-                
-            }
-
-        }
 
         
 
         //__CAMERA_MOV__
-
+            
         cam_speed = (1/cam1.scaling) * bcam_speed;
         if(GetKey(olc::Key::A).bHeld) cam1.cameraPos.x -= cam_speed * fElapsedTime;
         if(GetKey(olc::Key::D).bHeld) cam1.cameraPos.x += cam_speed * fElapsedTime;
@@ -183,14 +159,39 @@ public:
             olc::vf2d apos = cam1.camToWorld({ScreenWidth()/2, ScreenHeight()/2});
             cam1.cameraPos += (bpos-apos);        
         }
+        
 
+        //Check for collisions, though only one per frame is dealt with
+        {
+        bool stop = false;
+            for(auto&[key, body] : elements){
+                for(auto&[key2, body2]: elements){
+                    if(key == key2) continue;
+                    
+                    if(distance(body.position, body2.position) <= body.radius + body2.radius){
+                        body.color = olc::RED;
+                        sBody new_body = {(body.mass + body2.mass), (body.radius +body2.radius), (body.mass >= body2.mass ? body.position : body2.position), 
+                        (body.velocity * body.mass + body2.velocity * body2.mass)/(body.mass + body2.mass)};
+                        elements.erase(body.mass >= body2.mass ? key2: key);
+                        elements[key] = new_body;
+                        
+                        stop = true;
+                        break;
+                    }
+                }
+                if(stop){
+                    break;
+                }
+            }
+        }
+        
         //__CALC FORCES BETWEEN BODIES__
-
-        map<string, olc::vf2d> forces2apply; // <key, resulting forces>
+        map<size_t, olc::vf2d> forces2apply; // <key, resulting forces>
         for(auto&[key,body] : elements){
             forces2apply[key] = olc::vf2d{0,0};
             for(auto&[key2, body2] : elements){
                 if(key2 == key) continue;
+                if(distance(body.position, body2.position) == 0) continue; //they'll get  checked out as colliding, so skip
                 olc::vf2d force = body2.position - body.position; //calc direction
                 force = force.norm(); //normalize
                 float force_ammount = G*(body.mass * body2.mass)/(distance(body.position, body2.position)); 
@@ -198,6 +199,7 @@ public:
                 forces2apply[key] += force;
             }
         }    
+
         //__APPLY FORCES__
         for(auto& [key, f] : forces2apply){
             elements[key].applyImpulse(f, physics_time);
@@ -206,7 +208,44 @@ public:
 
         //__DRAW BODIES__  
         for(auto& [key, o] : elements){
-            FillCircle(cam1.worldToCam(o.position), o.radius*cam1.scaling);
+            FillCircle(cam1.worldToCam(o.position), o.radius*cam1.scaling, o.color);
+        }
+
+
+        //__INSERT_MODE__
+        {
+            
+            if(GetKey(olc::I).bPressed){
+                imode = !imode;
+            }
+            if(imode){
+                DrawString(olc::vi2d{0,0} , "Mass Level: "+ std::to_string(imode_mass_lvl) +"\nPress O and P to adjust", olc::WHITE, 2);
+                DrawString(olc::vi2d{0,35}, "Press C to cancel the scene", olc::WHITE, 2);
+                if(GetMouse(1).bHeld){
+                    elements[tick] = sBody{imode_mass_lvl, (imode_mass_lvl/70)+1, cam1.camToWorld(GetMousePos()), {0,0}};
+                }
+                if(GetMouse(0).bPressed){
+                    imode_release = true;
+                    tmp_pos = GetMousePos();
+                }
+                else if(GetKey(olc::P).bPressed) imode_mass_lvl +=100;
+                else if (GetKey(olc::O).bPressed && imode_mass_lvl>100) imode_mass_lvl -=100;
+            }else{
+                DrawString(olc::vi2d{0,0}, "Press C to cancel the scene", olc::WHITE, 2);
+            }
+            
+            
+
+            if(imode_release){
+                    FillCircle(tmp_pos, (imode_mass_lvl/70)*cam1.scaling);
+                    DrawLine(tmp_pos, GetMousePos());
+                    if(GetMouse(0).bReleased){  
+                        elements[tick]=sBody{imode_mass_lvl, (imode_mass_lvl/70)+1, cam1.camToWorld(tmp_pos) ,(cam1.camToWorld(tmp_pos)-cam1.camToWorld(GetMousePos()))*imode_bias_multiply_velocity};
+                        imode_release=false;
+                    }
+                
+            }
+
         }
 
         
@@ -225,9 +264,8 @@ public:
         }
 
         DrawString({0,ScreenHeight()-10}, "Realised by using Javidx9 pixelGameEngine");
-        DrawString({0,ScreenHeight()-20}, to_string(GetMousePos().x)+" "+to_string(GetMousePos().y));
-		DrawString({0,ScreenHeight()-30}, to_string(cam1.camToWorld(GetMousePos()).x)+" "+to_string(cam1.camToWorld(GetMousePos()).y));
-
+        DrawString({0,ScreenHeight()-20}, to_string(elements.size()));
+        
         return true;
 	}
 };
