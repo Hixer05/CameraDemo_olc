@@ -68,6 +68,15 @@ float distance(olc::vf2d pos1, olc::vf2d pos2){
         return sqrt(pow(pos1.x-pos2.x,2)+pow(pos1.y-pos2.y,2));
 }
 
+int pBrightness(float scaling){
+    if(scaling > 1){
+        return 255;
+    }else{
+        return scaling*255;
+    }
+    
+}
+
 class Example : public olc::PixelGameEngine
 {
 public:
@@ -81,7 +90,7 @@ vector<olc::vf2d> toDraw;
 const double bcam_speed = 400;
 double cam_speed = bcam_speed;
 sCamera cam1;
-const int gridSpacing = 50;
+const int gridSpacing = 200;
 
 // CELESTIAL BODIES
 map<size_t, sBody>elements;
@@ -112,7 +121,7 @@ public:
     
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-        //cam1.cameraPos +=  elements[1].position - cam1.camToWorld({ScreenWidth()/2, ScreenHeight()/2});
+        cam1.cameraPos +=  elements[1].position - cam1.camToWorld({ScreenWidth()/2, ScreenHeight()/2});
         tick++;
 
         if(GetKey(olc::Key::C).bPressed){
@@ -161,7 +170,7 @@ public:
         }
         
 
-        //Check for collisions, though only one per frame is dealt with
+        //Check for collisions, though only one per frame is dealt withs, thogh with many fast particles does not work
         {
         bool stop = false;
             for(auto&[key, body] : elements){
@@ -184,6 +193,7 @@ public:
                 }
             }
         }
+
         
         //__CALC FORCES BETWEEN BODIES__
         map<size_t, olc::vf2d> forces2apply; // <key, resulting forces>
@@ -205,6 +215,23 @@ public:
             elements[key].applyImpulse(f, physics_time);
         };
 
+        //__DRAW_GRID__
+
+        int pixel_brightness = pBrightness(cam1.scaling);
+
+
+        // horizontal:
+        int scarto = (int)(cam1.cameraPos.y) % gridSpacing; // eg pos.x=1988; scarto=38
+        for(int i = cam1.camToWorld({0,0}).y-scarto; i>cam1.camToWorld(cam1.cameraLen).y; i-=gridSpacing){
+                DrawLine({0,cam1.worldToCam({0,i}).y},{cam1.cameraLen.x,cam1.worldToCam({0,i}).y}, olc::Pixel{255,255,255,pixel_brightness});
+                
+        }
+        //vertical:
+        
+        scarto = (int)(cam1.cameraPos.x) % gridSpacing;
+        for(int i = cam1.camToWorld({0,0}).x-scarto; i<cam1.camToWorld(cam1.cameraLen).x; i+=gridSpacing){
+                DrawLine({cam1.worldToCam({i,0}).x, 0},{cam1.worldToCam({i,0}).x,cam1.cameraLen.y}, olc::Pixel{255,255,255,pixel_brightness});
+        }
 
         //__DRAW BODIES__  
         for(auto& [key, o] : elements){
@@ -249,22 +276,10 @@ public:
         }
 
         
-        //__DRAW_GRID__
-        // horizontal:
-        int scarto = (int)(cam1.cameraPos.y) % gridSpacing; // eg pos.x=1988; scarto=38
-        for(int i = cam1.camToWorld({0,0}).y-scarto; i>cam1.camToWorld(cam1.cameraLen).y; i-=gridSpacing){
-                DrawLine({0,cam1.worldToCam({0,i}).y},{cam1.cameraLen.x,cam1.worldToCam({0,i}).y}, olc::GREY);
-                
-        }
-        //vertical:
         
-        scarto = (int)(cam1.cameraPos.x) % gridSpacing;
-        for(int i = cam1.camToWorld({0,0}).x-scarto; i<cam1.camToWorld(cam1.cameraLen).x; i+=gridSpacing){
-                DrawLine({cam1.worldToCam({i,0}).x, 0},{cam1.worldToCam({i,0}).x,cam1.cameraLen.y}, olc::GREY);
-        }
 
         DrawString({0,ScreenHeight()-10}, "Realised by using Javidx9 pixelGameEngine");
-        DrawString({0,ScreenHeight()-20}, to_string(elements.size()));
+        DrawString({0,ScreenHeight()-20}, to_string(cam1.scaling));
         
         return true;
 	}
@@ -274,7 +289,7 @@ public:
 int main()
 {
 	Example demo;
-	if (demo.Construct(1000, 700, 1, 1, 0, 1))
+	if (demo.Construct(1920, 1080, 1, 1, 1, 1))
 		demo.Start();
 
 	return 0;
