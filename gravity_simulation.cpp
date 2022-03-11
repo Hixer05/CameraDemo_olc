@@ -43,7 +43,6 @@ struct sBody{
     string name = "Unnamed";
     olc::Pixel color = olc::WHITE;
     void applyImpulse(olc::vf2d force, float time){
-        
         velocity += (force/mass)*time;
         position += velocity*time;
     }
@@ -62,12 +61,12 @@ int pBrightness(float scaling){
     
 }
 
-class Example : public olc::PixelGameEngine
+class Game : public olc::PixelGameEngine
 {
 public:
-	Example()
+	Game()
 	{
-		sAppName = "Example";
+		sAppName = "Gravity";
 	}
 
 private:
@@ -201,7 +200,6 @@ public:
         };
 
         //__DRAW_GRID__
-
         int pixel_brightness = pBrightness(cam1.scaling);
 
 
@@ -273,7 +271,7 @@ public:
 
 int main()
 {
-	Example demo;
+	Game demo;
 	if (demo.Construct(1920, 1080, 1, 1, 1, 1))
 		demo.Start();
 
