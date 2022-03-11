@@ -154,7 +154,7 @@ public:
         }
         
 
-        //Check for collisions, though only one per frame is dealt withs, thogh with many fast particles does not work
+        //Check for collisions, though only one per frame is dealt withs, therefore with many fast particles it does not work
         {
         bool stop = false;
             for(auto&[key, body] : elements){
@@ -185,7 +185,7 @@ public:
             forces2apply[key] = olc::vf2d{0,0};
             for(auto&[key2, body2] : elements){
                 if(key2 == key) continue;
-                if(distance(body.position, body2.position) == 0) continue; //they'll get  checked out as colliding, so skip
+                if(distance(body.position, body2.position) == 0) continue; //they'll get checked out as colliding, so skip
                 olc::vf2d force = body2.position - body.position; //calc direction
                 force = force.norm(); //normalize
                 float force_ammount = G*(body.mass * body2.mass)/(distance(body.position, body2.position)); 
@@ -272,7 +272,7 @@ public:
 int main()
 {
 	Game demo;
-	if (demo.Construct(1920, 1080, 1, 1, 1, 1))
+	if (demo.Construct(800, 600, 1, 1, 0, 1))
 		demo.Start();
 
 	return 0;
