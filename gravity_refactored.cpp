@@ -7,7 +7,6 @@
 #include <thread>
 #include <map>
 using std::vector, std::cout, std::endl;
-int temp=1;
 
 class Body{
     
@@ -70,7 +69,7 @@ namespace _calculator {
     static void _calc(){
         const double G = 6.674 * pow(10, -11);
         const double G_multiplier=10000000; // bias
-        double delta_time = (double)(1.0/60.0)*temp; //simulation at 60 frames per second
+        double delta_time = (double)(1.0/60.0); //simulation at 60 frames per second
         auto distance = [](olc::vf2d pos1, olc::vf2d pos2){
             return sqrt(pow(pos1.x-pos2.x,2)+pow(pos1.y-pos2.y,2));
         };
@@ -78,7 +77,7 @@ namespace _calculator {
         size_t num  = 0;
 
         while(run){
-            delta_time = (double)(1.0/60.0)*temp;
+            delta_time = (double)(1.0/60.0);
             if(r_bodies->size()< MAX_CALC){
                 std::map<size_t, olc::vd2d> forces2apply;
                 
@@ -171,10 +170,7 @@ class Simulation : public olc::PixelGameEngine {
         }
         _calculator::do_pop_back();
 
-        if(GetKey(olc::D).bPressed) temp+=10;
-        if(GetKey(olc::A).bPressed) temp=1;
-
-        //cout << bodies->at(0).at(0).getPosition() << endl; // TODO: _Calculator does not apply IMPULSE! Obj position NOT CHANGING!!!!
+        //cout << bodies->at(0).at(0).getPosition() << endl;
         return true;
     };
 
