@@ -80,8 +80,8 @@ const int gridSpacing = 200;
 map<size_t, sBody>elements;
 size_t tick = 0;
 const float G = 6.674 * pow(10, -11);
-float time_multiplier = 2;
-float gravity_multiplier = 1000000;
+float time_multiplier = 1000;
+float gravity_multiplier = 1;
 //imode
 bool imode = false;
 bool imode_release = false;;
@@ -96,8 +96,8 @@ public:
         cam1.cameraPos= {-cam1.cameraLen.x/2, cam1.cameraLen.y/2};
         cam1.scaling = 1;
 
-        elements[0] = sBody{20000000, 30, olc::vf2d{0,0}};
-        elements[1] = sBody{8600, 20, olc::vf2d{-200,0}, olc::vf2d{0,20}};
+        elements[0] = sBody{1000000000, 30, olc::vf2d{0,0}};
+        elements[1] = sBody{1000, 20, olc::vf2d{-200,0}, olc::vf2d{0,0.01}};
 		return true;
 	}
 
@@ -188,7 +188,7 @@ public:
                 if(distance(body.position, body2.position) == 0) continue; //they'll get checked out as colliding, so skip
                 olc::vf2d force = body2.position - body.position; //calc direction
                 force = force.norm(); //normalize
-                float force_ammount = G*(body.mass * body2.mass)/(distance(body.position, body2.position)); 
+                float force_ammount = G*(body.mass * body2.mass)/pow(distance(body.position, body2.position),2); 
                 force *= force_ammount*gravity_multiplier;
                 forces2apply[key] += force;
             }

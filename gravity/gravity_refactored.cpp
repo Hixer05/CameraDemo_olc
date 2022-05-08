@@ -1,7 +1,7 @@
 #define HIXER_CAMERA_DOUBLE_ON
 #define OLC_PGE_APPLICATION
-#include "olcPixelGameEngine.h"
-#include "hixer_camera.hpp"
+#include <olcPixelGameEngine.h>
+#include <hixer_camera.hpp>
 #include <vector>
 #include <queue>
 #include <thread>
@@ -60,6 +60,7 @@ class Body{
 };
 
 namespace _calculator {
+    static double mult=10000;
     static bool run = false;
     static bool pop_back = false;
     std::thread* t;
@@ -68,8 +69,8 @@ namespace _calculator {
 
     static void _calc(){
         const double G = 6.674 * pow(10, -11);
-        const double G_multiplier=5000000; // bias
-        double delta_time = (double)(1.0/60.0); //simulation at 60 frames per second
+        //const double G_multiplier=5000000; // bias
+        double delta_time = (double)(1.0/60.0)*mult; //simulation at 60 frames per second
         auto distance = [](olc::vf2d pos1, olc::vf2d pos2){
             return sqrt(pow(pos1.x-pos2.x,2)+pow(pos1.y-pos2.y,2));
         };
@@ -77,7 +78,7 @@ namespace _calculator {
         size_t num  = 0;
 
         while(run){
-            delta_time = (double)(1.0/60.0);
+            delta_time = (double)(1.0/60.0)*mult; // * change delta time with mult updated value
             if(r_bodies->size()< MAX_CALC){
                 std::map<size_t, olc::vd2d> forces2apply;
                 
@@ -89,16 +90,16 @@ namespace _calculator {
                         if(b.getKey() == b2.getKey()) continue;
                         double dist;
                         if((dist=distance(b.getPosition(), b2.getPosition())) == 0) continue;
-                        olc::vd2d force = b2.getPosition() - b.getPosition();
+                        olc::vd2d force = b2.getPosition() - b.getPosition(); //get vector from 1st to 2nd
                         force = force.norm();
-                        double force_ammount = G*(b.getMass() * b2.getMass())/(dist);
-                        force *= force_ammount * G_multiplier;
+                        double force_ammount = G*(b.getMass() * b2.getMass())/pow(dist,2);
+                        force *= force_ammount; //* G_multiplier;
                         forces2apply[b.getKey()] += force;
                     }
                 }
 
                 for(Body& b : bodies){
-                    b.applyImpulse(forces2apply[b.getKey()], delta_time*10);
+                    b.applyImpulse(forces2apply[b.getKey()], delta_time);
                 }
 
                 r_bodies->push_back(bodies);
@@ -152,9 +153,9 @@ class Simulation : public olc::PixelGameEngine {
         cam = {{ScreenWidth(), ScreenHeight()}, {-ScreenWidth()/2, ScreenHeight()/2},1};
         
         bodies = new vector<vector<Body>>(1);
-
-        bodies->at(0).push_back(Body(10.0,10.0,{100.0,0.0}, {0,5}, 0));
-        bodies->at(0).push_back(Body(100000.0,20.0,{0.0,0.0}, {0,0}, 1));
+        //Body::Body(double mass, double radius, olc::vd2d position, olc::vd2d velocity, size_t key)
+        bodies->at(0).push_back(Body(pow(10,3),10.0,{100.0,0.0}, {0,0.01}, 0));
+        bodies->at(0).push_back(Body(pow(10,8),20.0,{0.0,0.0}, {0,0}, 1));
         
         _calculator::start(100, bodies);
         
@@ -169,11 +170,18 @@ class Simulation : public olc::PixelGameEngine {
 
         }
         _calculator::do_pop_back();
-        /*
-        if(GetKey(olc::D).bPressed) _calculator::mult *= 1.50;
-        if(GetKey(olc::A).bPressed) _calculator::mult *= 0.5;
-        cout << _calculator::mult << endl;
-        */
+        
+        if(GetKey(olc::P).bPressed) _calculator::mult *= 1.50;
+        if(GetKey(olc::O).bPressed) _calculator::mult *= 0.5;
+        
+        if(GetKey(olc::D).bHeld) cam.cameraPos += { 100 * fElapsedTime , 0 };
+        if(GetKey(olc::A).bHeld) cam.cameraPos -= { 100 * fElapsedTime , 0 };
+        if(GetKey(olc::W).bHeld) cam.cameraPos += { 0, 100 * fElapsedTime };
+        if(GetKey(olc::S).bHeld) cam.cameraPos -= { 0, 100 * fElapsedTime };
+        
+        //cam.cameraPos = bodies->at(0).at(1).getPosition() - cam.cameraLen/2;
+        //cout << _calculator::mult << endl;
+        
         //cout << bodies->at(0).at(0).getPosition() << endl;
         return true;
     };
