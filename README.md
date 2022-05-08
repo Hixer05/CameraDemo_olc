@@ -1,7 +1,5 @@
 # olcPGE_demos
 
----
-
 ## What's this?
 
 These are demos I created while playing around with Javidx9's PixelGameEngine.
@@ -17,6 +15,12 @@ I've also included with camera and scaling (zooming), move with WASD; and zoom w
 
 In this demo I re-implemented the gravity simulation ( partially ) with an additional thread that does all of the computation freely from the main one, which draws. Generally it's 100 frames ahead of the drawing process.
 
+https://user-images.githubusercontent.com/60942163/167293319-847bdd01-ccd5-4f40-8c58-d0d3aa683201.mp4
+
 ##### Problems with Gravity
 
 I suspect that the simulations are wrong, and I am currently revising them. It may be the physiscs values I use, or it may be a problem with how I handle variables. Feel free to point  out errors or better methods in the issues section.
+
+
+
+
