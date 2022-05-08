@@ -68,7 +68,7 @@ namespace _calculator {
 
     static void _calc(){
         const double G = 6.674 * pow(10, -11);
-        const double G_multiplier=10000000; // bias
+        const double G_multiplier=5000000; // bias
         double delta_time = (double)(1.0/60.0); //simulation at 60 frames per second
         auto distance = [](olc::vf2d pos1, olc::vf2d pos2){
             return sqrt(pow(pos1.x-pos2.x,2)+pow(pos1.y-pos2.y,2));
@@ -98,7 +98,7 @@ namespace _calculator {
                 }
 
                 for(Body& b : bodies){
-                    b.applyImpulse(forces2apply[b.getKey()], delta_time);
+                    b.applyImpulse(forces2apply[b.getKey()], delta_time*10);
                 }
 
                 r_bodies->push_back(bodies);
@@ -169,7 +169,11 @@ class Simulation : public olc::PixelGameEngine {
 
         }
         _calculator::do_pop_back();
-
+        /*
+        if(GetKey(olc::D).bPressed) _calculator::mult *= 1.50;
+        if(GetKey(olc::A).bPressed) _calculator::mult *= 0.5;
+        cout << _calculator::mult << endl;
+        */
         //cout << bodies->at(0).at(0).getPosition() << endl;
         return true;
     };
